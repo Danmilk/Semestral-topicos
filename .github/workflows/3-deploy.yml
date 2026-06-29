@@ -93,15 +93,15 @@ jobs:
             try {
               $response = Invoke-WebRequest -Uri "http://${IP}:3000/health" -UseBasicParsing -TimeoutSec 10
               if ($response.StatusCode -eq 200) {
-                Write-Host "Health check exitoso en intento $i"
+                Write-Host "Health check OK en intento $i"
                 exit 0
               }
             } catch {
-              Write-Host "Intento $i`: sin respuesta — esperando 15s..."
+              Write-Host "Intento ${i}: sin respuesta - esperando 15s..."
             }
             Start-Sleep -Seconds 15
           }
-          Write-Host "Health check falló después de 10 intentos"
+          Write-Host "Health check fallo despues de 10 intentos"
           exit 1
 
       - name: Mostrar URL de acceso
