@@ -5,7 +5,7 @@ variable "resource_group_name" {
 
 variable "location" {
   description = "Región de Azure"
-  default     = "East US"
+  default     = "East US 2"
 }
 
 variable "acr_name" {

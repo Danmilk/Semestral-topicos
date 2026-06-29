@@ -5,14 +5,12 @@ on:
     branches: [main]
     paths:
       - "terraform/**"
-  workflow_dispatch:  # permite ejecución manual
+  workflow_dispatch:
 
 env:
   TF_VERSION: "1.8.4"
-  ARM_CLIENT_ID:       ${{ secrets.AZURE_CLIENT_ID }}
-  ARM_CLIENT_SECRET:   ${{ secrets.AZURE_CLIENT_SECRET }}
   ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-  ARM_TENANT_ID:       ${{ secrets.AZURE_TENANT_ID }}
+  ARM_ACCESS_KEY:      ${{ secrets.TF_BACKEND_KEY }}
 
 jobs:
   terraform:
@@ -26,6 +24,12 @@ jobs:
     steps:
       - name: Checkout código
         uses: actions/checkout@v4
+
+      - name: Login en Azure CLI
+        run: az login --username ${{ secrets.AZURE_USERNAME }} --password ${{ secrets.AZURE_PASSWORD }}
+
+      - name: Seleccionar suscripción
+        run: az account set --subscription ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Configurar Terraform
         uses: hashicorp/setup-terraform@v3

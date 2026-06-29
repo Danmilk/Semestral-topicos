@@ -16,7 +16,6 @@ jobs:
   build-and-push:
     name: Build Docker Image y Push a ACR
     runs-on: ubuntu-latest
-    # Solo ejecutar si el pipeline upstream tuvo éxito, o si fue un push directo
     if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name != 'workflow_run' }}
 
     outputs:
@@ -33,10 +32,11 @@ jobs:
           echo "image_tag=${SHORT_SHA}" >> $GITHUB_OUTPUT
           echo "Tag de imagen: ${SHORT_SHA}"
 
-      - name: Login en Azure
-        uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: Login en Azure CLI
+        run: az login --username ${{ secrets.AZURE_USERNAME }} --password ${{ secrets.AZURE_PASSWORD }}
+
+      - name: Seleccionar suscripción
+        run: az account set --subscription ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Login en ACR
         run: az acr login --name acrfinalproject
