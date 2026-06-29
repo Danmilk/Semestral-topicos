@@ -22,6 +22,7 @@ resource "azurerm_resource_group" "main" {
   tags = {
     project     = "finalproject"
     environment = "dev"
+    managed_by  = "terraform"
   }
 }
 
