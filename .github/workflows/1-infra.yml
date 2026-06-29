@@ -36,6 +36,13 @@ jobs:
         with:
           terraform_version: ${{ env.TF_VERSION }}
 
+      - name: Cache providers de Terraform
+        uses: actions/cache@v4
+        with:
+          path: terraform/.terraform
+          key: terraform-${{ env.TF_VERSION }}-${{ hashFiles('terraform/.terraform.lock.hcl') }}
+          restore-keys: terraform-${{ env.TF_VERSION }}-
+
       - name: Terraform Init
         run: terraform init
         working-directory: terraform
