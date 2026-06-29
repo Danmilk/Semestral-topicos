@@ -4,10 +4,11 @@ const { app, server } = require('../src/index');
 afterAll(() => server.close());
 
 describe('API routes', () => {
-  test('GET / returns 200 with status ok', async () => {
+  test('GET / returns 200 with HTML dashboard', async () => {
     const res = await request(app).get('/');
     expect(res.status).toBe(200);
-    expect(res.body.status).toBe('ok');
+    expect(res.type).toBe('text/html');
+    expect(res.text).toContain('Proyecto Final');
   });
 
   test('GET /health returns healthy status', async () => {
