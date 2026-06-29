@@ -40,11 +40,7 @@ jobs:
         run: az account set --subscription ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Login en ACR
-        run: |
-          $ACR_PASS = az acr credential show -n acrfinalproject --query passwords[0].value -o tsv
-          $ACR_USER = az acr credential show -n acrfinalproject --query username -o tsv
-          Write-Host "::add-mask::$ACR_PASS"
-          $ACR_PASS | docker login acrfinalproject.azurecr.io -u $ACR_USER --password-stdin
+        run: az acr login --name acrfinalproject
 
       - name: Build imagen Docker (incluye tests en multi-stage)
         run: |
