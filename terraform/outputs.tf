@@ -15,16 +15,6 @@ output "acr_admin_password" {
   sensitive   = true
 }
 
-output "aci_ip_address" {
-  description = "IP pública del Azure Container Instance"
-  value       = azurerm_container_group.main.ip_address
-}
-
-output "app_url" {
-  description = "URL de acceso a la aplicación"
-  value       = "http://${azurerm_container_group.main.ip_address}:3000"
-}
-
 output "vnet_id" {
   description = "ID del Virtual Network"
   value       = azurerm_virtual_network.main.id

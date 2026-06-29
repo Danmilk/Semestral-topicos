@@ -23,7 +23,6 @@ jobs:
 
     outputs:
       acr_login_server: ${{ steps.tf_output.outputs.acr_login_server }}
-      aci_ip_address:   ${{ steps.tf_output.outputs.aci_ip_address }}
 
     steps:
       - name: Checkout código
@@ -57,14 +56,12 @@ jobs:
         id: tf_output
         run: |
           $acr = terraform output -raw acr_login_server
-          $ip  = terraform output -raw aci_ip_address
           echo "acr_login_server=$acr" >> $env:GITHUB_OUTPUT
-          echo "aci_ip_address=$ip"   >> $env:GITHUB_OUTPUT
         working-directory: terraform
 
       - name: Mostrar recursos creados
         run: |
           Write-Host "=== Infraestructura creada ==="
           Write-Host "ACR: $(terraform output -raw acr_login_server)"
-          Write-Host "App URL: $(terraform output -raw app_url)"
+          Write-Host "VNet ID: $(terraform output -raw vnet_id)"
         working-directory: terraform

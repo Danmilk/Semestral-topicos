@@ -89,42 +89,4 @@ resource "azurerm_network_profile" "aci" {
   }
 }
 
-# ──────────────────────────────────────────────
-# Azure Container Instance
-# ──────────────────────────────────────────────
-resource "azurerm_container_group" "main" {
-  name                = var.aci_name
-  location            = azurerm_resource_group.main.location
-  resource_group_name = azurerm_resource_group.main.name
-  ip_address_type     = "Public"
-  os_type             = "Linux"
-
-  # Credenciales para que ACI pueda hacer pull desde ACR
-  image_registry_credential {
-    server   = azurerm_container_registry.main.login_server
-    username = azurerm_container_registry.main.admin_username
-    password = azurerm_container_registry.main.admin_password
-  }
-
-  container {
-    name   = "app"
-    image  = "${azurerm_container_registry.main.login_server}/finalproject:${var.image_tag}"
-    cpu    = "1.0"
-    memory = "1.5"
-
-    ports {
-      port     = 3000
-      protocol = "TCP"
-    }
-
-    environment_variables = {
-      NODE_ENV = "production"
-      PORT     = "3000"
-    }
-  }
-
-  tags = {
-    project     = "finalproject"
-    environment = "dev"
-  }
-}
+# El ACI se crea en Pipeline 3 (deployment) una vez que la imagen existe en ACR
