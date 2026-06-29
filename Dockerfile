@@ -3,7 +3,7 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 COPY app/package*.json ./
-RUN npm ci
+RUN npm install
 COPY app/ .
 
 # Los tests se ejecutan durante el build; si fallan, la imagen no se crea
@@ -14,7 +14,7 @@ FROM node:20-alpine AS production
 
 WORKDIR /app
 COPY --from=builder /app/package*.json ./
-RUN npm ci --omit=dev
+RUN npm install --omit=dev
 COPY --from=builder /app/src ./src
 
 EXPOSE 3000
