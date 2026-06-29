@@ -1,0 +1,64 @@
+name: "1 — Infrastructure (IaC)"
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "terraform/**"
+  workflow_dispatch:  # permite ejecución manual
+
+env:
+  TF_VERSION: "1.8.4"
+  ARM_CLIENT_ID:       ${{ secrets.AZURE_CLIENT_ID }}
+  ARM_CLIENT_SECRET:   ${{ secrets.AZURE_CLIENT_SECRET }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  ARM_TENANT_ID:       ${{ secrets.AZURE_TENANT_ID }}
+
+jobs:
+  terraform:
+    name: Terraform Apply
+    runs-on: ubuntu-latest
+
+    outputs:
+      acr_login_server: ${{ steps.tf_output.outputs.acr_login_server }}
+      aci_ip_address:   ${{ steps.tf_output.outputs.aci_ip_address }}
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Configurar Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: terraform
+
+      - name: Terraform Validate
+        run: terraform validate
+        working-directory: terraform
+
+      - name: Terraform Plan
+        run: terraform plan -out=tfplan
+        working-directory: terraform
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve tfplan
+        working-directory: terraform
+
+      - name: Capturar outputs de Terraform
+        id: tf_output
+        run: |
+          echo "acr_login_server=$(terraform output -raw acr_login_server)" >> $GITHUB_OUTPUT
+          echo "aci_ip_address=$(terraform output -raw aci_ip_address)" >> $GITHUB_OUTPUT
+        working-directory: terraform
+
+      - name: Mostrar recursos creados
+        run: |
+          echo "=== Infraestructura creada ==="
+          echo "ACR: $(terraform output -raw acr_login_server)"
+          echo "ACI IP: $(terraform output -raw aci_ip_address)"
+          echo "App URL: $(terraform output -raw app_url)"
+        working-directory: terraform

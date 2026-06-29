@@ -1,0 +1,71 @@
+name: "2 — Build & Publish"
+
+on:
+  workflow_run:
+    workflows: ["1 — Infrastructure (IaC)"]
+    types: [completed]
+    branches: [main]
+  push:
+    branches: [main]
+    paths:
+      - "app/**"
+      - "Dockerfile"
+  workflow_dispatch:
+
+jobs:
+  build-and-push:
+    name: Build Docker Image y Push a ACR
+    runs-on: ubuntu-latest
+    # Solo ejecutar si el pipeline upstream tuvo éxito, o si fue un push directo
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name != 'workflow_run' }}
+
+    outputs:
+      image_tag: ${{ steps.meta.outputs.image_tag }}
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Generar tag de imagen (SHA corto)
+        id: meta
+        run: |
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          echo "image_tag=${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "Tag de imagen: ${SHORT_SHA}"
+
+      - name: Login en Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Login en ACR
+        run: az acr login --name acrfinalproject
+
+      - name: Build imagen Docker (incluye tests en multi-stage)
+        run: |
+          docker build \
+            --build-arg APP_VERSION=${{ steps.meta.outputs.image_tag }} \
+            -t acrfinalproject.azurecr.io/finalproject:${{ steps.meta.outputs.image_tag }} \
+            -t acrfinalproject.azurecr.io/finalproject:latest \
+            .
+
+      - name: Push imagen a ACR
+        run: |
+          docker push acrfinalproject.azurecr.io/finalproject:${{ steps.meta.outputs.image_tag }}
+          docker push acrfinalproject.azurecr.io/finalproject:latest
+
+      - name: Guardar tag como artefacto
+        run: echo "${{ steps.meta.outputs.image_tag }}" > image_tag.txt
+
+      - name: Upload artefacto image_tag
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-tag
+          path: image_tag.txt
+          retention-days: 1
+
+      - name: Mostrar imagen publicada
+        run: |
+          echo "=== Imagen publicada en ACR ==="
+          echo "Imagen: acrfinalproject.azurecr.io/finalproject:${{ steps.meta.outputs.image_tag }}"
+          echo "También disponible como: acrfinalproject.azurecr.io/finalproject:latest"
