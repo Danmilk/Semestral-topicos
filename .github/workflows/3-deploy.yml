@@ -18,6 +18,10 @@ jobs:
     runs-on: self-hosted
     if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
 
+    defaults:
+      run:
+        shell: powershell
+
     steps:
       - name: Checkout código
         uses: actions/checkout@v4
@@ -32,80 +36,78 @@ jobs:
 
       - name: Resolver tag de imagen
         id: tag
-        shell: bash
         run: |
-          if [ -f image_tag.txt ]; then
-            TAG=$(cat image_tag.txt)
-          else
-            TAG="${{ github.event.inputs.image_tag || 'latest' }}"
-          fi
-          echo "tag=$TAG" >> $GITHUB_OUTPUT
-          echo "Desplegando tag: $TAG"
+          if (Test-Path image_tag.txt) {
+            $TAG = (Get-Content image_tag.txt).Trim()
+          } else {
+            $TAG = "${{ github.event.inputs.image_tag }}"
+            if (-not $TAG) { $TAG = "latest" }
+          }
+          echo "tag=$TAG" >> $env:GITHUB_OUTPUT
+          Write-Host "Desplegando tag: $TAG"
 
       - name: Seleccionar suscripción de Azure
-        shell: bash
         run: az account set --subscription ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Obtener credenciales de ACR
         id: acr_creds
-        shell: bash
         run: |
-          ACR_USER=$(az acr credential show -n acrfinalproject --query username -o tsv)
-          ACR_PASS=$(az acr credential show -n acrfinalproject --query passwords[0].value -o tsv)
-          echo "acr_user=$ACR_USER" >> $GITHUB_OUTPUT
-          echo "::add-mask::$ACR_PASS"
-          echo "acr_pass=$ACR_PASS" >> $GITHUB_OUTPUT
+          $ACR_USER = az acr credential show -n acrfinalproject --query username -o tsv
+          $ACR_PASS = az acr credential show -n acrfinalproject --query passwords[0].value -o tsv
+          echo "acr_user=$ACR_USER" >> $env:GITHUB_OUTPUT
+          Write-Host "::add-mask::$ACR_PASS"
+          echo "acr_pass=$ACR_PASS" >> $env:GITHUB_OUTPUT
 
       - name: Crear o actualizar ACI
-        shell: bash
         run: |
-          az container create \
-            --resource-group rg-finalproject-dev \
-            --name aci-finalproject \
-            --image acrfinalproject.azurecr.io/finalproject:${{ steps.tag.outputs.tag }} \
-            --registry-login-server acrfinalproject.azurecr.io \
-            --registry-username ${{ steps.acr_creds.outputs.acr_user }} \
-            --registry-password ${{ steps.acr_creds.outputs.acr_pass }} \
-            --cpu 1 \
-            --memory 1.5 \
-            --ports 3000 \
-            --ip-address Public \
-            --os-type Linux \
-            --environment-variables NODE_ENV=production PORT=3000 APP_VERSION=${{ steps.tag.outputs.tag }} \
+          $TAG = "${{ steps.tag.outputs.tag }}"
+          az container create `
+            --resource-group rg-finalproject-dev `
+            --name aci-finalproject `
+            --image "acrfinalproject.azurecr.io/finalproject:$TAG" `
+            --registry-login-server acrfinalproject.azurecr.io `
+            --registry-username ${{ steps.acr_creds.outputs.acr_user }} `
+            --registry-password ${{ steps.acr_creds.outputs.acr_pass }} `
+            --cpu 1 `
+            --memory 1.5 `
+            --ports 3000 `
+            --ip-address Public `
+            --os-type Linux `
+            --environment-variables NODE_ENV=production PORT=3000 APP_VERSION=$TAG `
             --restart-policy Always
 
       - name: Obtener IP del contenedor
         id: get_ip
-        shell: bash
         run: |
-          IP=$(az container show \
-            --resource-group rg-finalproject-dev \
-            --name aci-finalproject \
-            --query ipAddress.ip -o tsv)
-          echo "ip=$IP" >> $GITHUB_OUTPUT
-          echo "IP del contenedor: $IP"
+          $IP = az container show `
+            --resource-group rg-finalproject-dev `
+            --name aci-finalproject `
+            --query ipAddress.ip -o tsv
+          echo "ip=$IP" >> $env:GITHUB_OUTPUT
+          Write-Host "IP del contenedor: $IP"
 
       - name: Health check
-        shell: bash
         run: |
-          IP="${{ steps.get_ip.outputs.ip }}"
-          for i in {1..10}; do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://${IP}:3000/health" || echo "000")
-            if [ "$STATUS" = "200" ]; then
-              echo "Health check exitoso en intento $i"
-              exit 0
-            fi
-            echo "Intento $i: HTTP $STATUS — esperando 15s..."
-            sleep 15
-          done
-          echo "Health check falló después de 10 intentos"
+          $IP = "${{ steps.get_ip.outputs.ip }}"
+          for ($i = 1; $i -le 10; $i++) {
+            try {
+              $response = Invoke-WebRequest -Uri "http://${IP}:3000/health" -UseBasicParsing -TimeoutSec 10
+              if ($response.StatusCode -eq 200) {
+                Write-Host "Health check exitoso en intento $i"
+                exit 0
+              }
+            } catch {
+              Write-Host "Intento $i`: sin respuesta — esperando 15s..."
+            }
+            Start-Sleep -Seconds 15
+          }
+          Write-Host "Health check falló después de 10 intentos"
           exit 1
 
       - name: Mostrar URL de acceso
-        shell: bash
         run: |
-          echo "==========================="
-          echo "Despliegue exitoso"
-          echo "Tag: ${{ steps.tag.outputs.tag }}"
-          echo "App: http://${{ steps.get_ip.outputs.ip }}:3000"
-          echo "==========================="
+          Write-Host "==========================="
+          Write-Host "Despliegue exitoso"
+          Write-Host "Tag: ${{ steps.tag.outputs.tag }}"
+          Write-Host "App: http://${{ steps.get_ip.outputs.ip }}:3000"
+          Write-Host "==========================="

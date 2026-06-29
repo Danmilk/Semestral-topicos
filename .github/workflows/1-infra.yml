@@ -17,6 +17,10 @@ jobs:
     name: Terraform Apply
     runs-on: self-hosted
 
+    defaults:
+      run:
+        shell: powershell
+
     outputs:
       acr_login_server: ${{ steps.tf_output.outputs.acr_login_server }}
       aci_ip_address:   ${{ steps.tf_output.outputs.aci_ip_address }}
@@ -26,7 +30,6 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Seleccionar suscripción de Azure
-        shell: bash
         run: az account set --subscription ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Configurar Terraform
@@ -35,37 +38,33 @@ jobs:
           terraform_version: ${{ env.TF_VERSION }}
 
       - name: Terraform Init
-        shell: bash
         run: terraform init
         working-directory: terraform
 
       - name: Terraform Validate
-        shell: bash
         run: terraform validate
         working-directory: terraform
 
       - name: Terraform Plan
-        shell: bash
         run: terraform plan -out=tfplan
         working-directory: terraform
 
       - name: Terraform Apply
-        shell: bash
         run: terraform apply -auto-approve tfplan
         working-directory: terraform
 
       - name: Capturar outputs de Terraform
         id: tf_output
-        shell: bash
         run: |
-          echo "acr_login_server=$(terraform output -raw acr_login_server)" >> $GITHUB_OUTPUT
-          echo "aci_ip_address=$(terraform output -raw aci_ip_address)" >> $GITHUB_OUTPUT
+          $acr = terraform output -raw acr_login_server
+          $ip  = terraform output -raw aci_ip_address
+          echo "acr_login_server=$acr" >> $env:GITHUB_OUTPUT
+          echo "aci_ip_address=$ip"   >> $env:GITHUB_OUTPUT
         working-directory: terraform
 
       - name: Mostrar recursos creados
-        shell: bash
         run: |
-          echo "=== Infraestructura creada ==="
-          terraform output -raw acr_login_server
-          terraform output -raw app_url
+          Write-Host "=== Infraestructura creada ==="
+          Write-Host "ACR: $(terraform output -raw acr_login_server)"
+          Write-Host "App URL: $(terraform output -raw app_url)"
         working-directory: terraform
