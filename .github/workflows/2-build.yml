@@ -15,7 +15,7 @@ on:
 jobs:
   build-and-push:
     name: Build Docker Image y Push a ACR
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name != 'workflow_run' }}
 
     outputs:
@@ -27,21 +27,22 @@ jobs:
 
       - name: Generar tag de imagen (SHA corto)
         id: meta
+        shell: bash
         run: |
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
           echo "image_tag=${SHORT_SHA}" >> $GITHUB_OUTPUT
           echo "Tag de imagen: ${SHORT_SHA}"
 
-      - name: Login en Azure CLI
-        run: az login --username ${{ secrets.AZURE_USERNAME }} --password ${{ secrets.AZURE_PASSWORD }}
-
-      - name: Seleccionar suscripción
+      - name: Seleccionar suscripción de Azure
+        shell: bash
         run: az account set --subscription ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Login en ACR
+        shell: bash
         run: az acr login --name acrfinalproject
 
       - name: Build imagen Docker (incluye tests en multi-stage)
+        shell: bash
         run: |
           docker build \
             --build-arg APP_VERSION=${{ steps.meta.outputs.image_tag }} \
@@ -50,11 +51,13 @@ jobs:
             .
 
       - name: Push imagen a ACR
+        shell: bash
         run: |
           docker push acrfinalproject.azurecr.io/finalproject:${{ steps.meta.outputs.image_tag }}
           docker push acrfinalproject.azurecr.io/finalproject:latest
 
       - name: Guardar tag como artefacto
+        shell: bash
         run: echo "${{ steps.meta.outputs.image_tag }}" > image_tag.txt
 
       - name: Upload artefacto image_tag
@@ -65,7 +68,7 @@ jobs:
           retention-days: 1
 
       - name: Mostrar imagen publicada
+        shell: bash
         run: |
           echo "=== Imagen publicada en ACR ==="
-          echo "Imagen: acrfinalproject.azurecr.io/finalproject:${{ steps.meta.outputs.image_tag }}"
-          echo "También disponible como: acrfinalproject.azurecr.io/finalproject:latest"
+          echo "acrfinalproject.azurecr.io/finalproject:${{ steps.meta.outputs.image_tag }}"

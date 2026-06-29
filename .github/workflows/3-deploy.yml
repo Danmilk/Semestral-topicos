@@ -15,7 +15,7 @@ on:
 jobs:
   deploy:
     name: Desplegar a Azure Container Instance
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
 
     steps:
@@ -32,6 +32,7 @@ jobs:
 
       - name: Resolver tag de imagen
         id: tag
+        shell: bash
         run: |
           if [ -f image_tag.txt ]; then
             TAG=$(cat image_tag.txt)
@@ -41,14 +42,13 @@ jobs:
           echo "tag=$TAG" >> $GITHUB_OUTPUT
           echo "Desplegando tag: $TAG"
 
-      - name: Login en Azure CLI
-        run: az login --username ${{ secrets.AZURE_USERNAME }} --password ${{ secrets.AZURE_PASSWORD }}
-
-      - name: Seleccionar suscripción
+      - name: Seleccionar suscripción de Azure
+        shell: bash
         run: az account set --subscription ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Obtener credenciales de ACR
         id: acr_creds
+        shell: bash
         run: |
           ACR_USER=$(az acr credential show -n acrfinalproject --query username -o tsv)
           ACR_PASS=$(az acr credential show -n acrfinalproject --query passwords[0].value -o tsv)
@@ -57,6 +57,7 @@ jobs:
           echo "acr_pass=$ACR_PASS" >> $GITHUB_OUTPUT
 
       - name: Crear o actualizar ACI
+        shell: bash
         run: |
           az container create \
             --resource-group rg-finalproject-dev \
@@ -75,6 +76,7 @@ jobs:
 
       - name: Obtener IP del contenedor
         id: get_ip
+        shell: bash
         run: |
           IP=$(az container show \
             --resource-group rg-finalproject-dev \
@@ -83,7 +85,8 @@ jobs:
           echo "ip=$IP" >> $GITHUB_OUTPUT
           echo "IP del contenedor: $IP"
 
-      - name: Health check (espera hasta 150s)
+      - name: Health check
+        shell: bash
         run: |
           IP="${{ steps.get_ip.outputs.ip }}"
           for i in {1..10}; do
@@ -99,10 +102,10 @@ jobs:
           exit 1
 
       - name: Mostrar URL de acceso
+        shell: bash
         run: |
           echo "==========================="
           echo "Despliegue exitoso"
-          echo "Tag desplegado: ${{ steps.tag.outputs.tag }}"
-          echo "Aplicación disponible en: http://${{ steps.get_ip.outputs.ip }}:3000"
-          echo "Health check: http://${{ steps.get_ip.outputs.ip }}:3000/health"
+          echo "Tag: ${{ steps.tag.outputs.tag }}"
+          echo "App: http://${{ steps.get_ip.outputs.ip }}:3000"
           echo "==========================="

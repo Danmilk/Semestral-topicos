@@ -15,7 +15,7 @@ env:
 jobs:
   terraform:
     name: Terraform Apply
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     outputs:
       acr_login_server: ${{ steps.tf_output.outputs.acr_login_server }}
@@ -25,10 +25,8 @@ jobs:
       - name: Checkout código
         uses: actions/checkout@v4
 
-      - name: Login en Azure CLI
-        run: az login --username ${{ secrets.AZURE_USERNAME }} --password ${{ secrets.AZURE_PASSWORD }}
-
-      - name: Seleccionar suscripción
+      - name: Seleccionar suscripción de Azure
+        shell: bash
         run: az account set --subscription ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Configurar Terraform
@@ -37,32 +35,37 @@ jobs:
           terraform_version: ${{ env.TF_VERSION }}
 
       - name: Terraform Init
+        shell: bash
         run: terraform init
         working-directory: terraform
 
       - name: Terraform Validate
+        shell: bash
         run: terraform validate
         working-directory: terraform
 
       - name: Terraform Plan
+        shell: bash
         run: terraform plan -out=tfplan
         working-directory: terraform
 
       - name: Terraform Apply
+        shell: bash
         run: terraform apply -auto-approve tfplan
         working-directory: terraform
 
       - name: Capturar outputs de Terraform
         id: tf_output
+        shell: bash
         run: |
           echo "acr_login_server=$(terraform output -raw acr_login_server)" >> $GITHUB_OUTPUT
           echo "aci_ip_address=$(terraform output -raw aci_ip_address)" >> $GITHUB_OUTPUT
         working-directory: terraform
 
       - name: Mostrar recursos creados
+        shell: bash
         run: |
           echo "=== Infraestructura creada ==="
-          echo "ACR: $(terraform output -raw acr_login_server)"
-          echo "ACI IP: $(terraform output -raw aci_ip_address)"
-          echo "App URL: $(terraform output -raw app_url)"
+          terraform output -raw acr_login_server
+          terraform output -raw app_url
         working-directory: terraform
